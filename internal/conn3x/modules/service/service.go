@@ -54,18 +54,27 @@ func Unit(name string) string {
 	return name + ".service"
 }
 
+// ValidationError reports which attribute of a Desired failed validation.
+// The provider uses Attribute to attach the diagnostic to the right field.
+type ValidationError struct {
+	Attribute string
+	Message   string
+}
+
+func (e *ValidationError) Error() string { return e.Message }
+
 // Validate checks a Desired before anything runs on a host.
 func (d Desired) Validate() error {
 	if !unitPattern.MatchString(d.Name) {
-		return fmt.Errorf("unit name %q is not valid", d.Name)
+		return &ValidationError{"name", fmt.Sprintf("unit name %q is not valid", d.Name)}
 	}
 	switch d.State {
 	case "", Started, Stopped:
 	default:
-		return fmt.Errorf("state must be %q or %q, not %q", Started, Stopped, d.State)
+		return &ValidationError{"state", fmt.Sprintf("state must be %q or %q, not %q", Started, Stopped, d.State)}
 	}
 	if d.Masked != nil && *d.Masked && (d.State == Started || d.Enabled != nil && *d.Enabled) {
-		return errors.New("a masked unit can't be started or enabled")
+		return &ValidationError{"masked", "a masked unit can't be started or enabled; notify a handler from the step that changes the config, or use conn3x run"}
 	}
 	return nil
 }

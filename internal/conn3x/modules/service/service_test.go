@@ -149,6 +149,23 @@ func TestValidate(t *testing.T) {
 	}
 }
 
+func TestValidateErrorNamesAttribute(t *testing.T) {
+	yes := true
+	for _, c := range []struct {
+		attr string
+		d    Desired
+	}{
+		{"name", Desired{Name: "x y"}},
+		{"state", Desired{Name: "web", State: "restarted"}},
+		{"masked", Desired{Name: "web", State: Started, Masked: &yes}},
+	} {
+		var ve *ValidationError
+		if err := c.d.Validate(); !errors.As(err, &ve) || ve.Attribute != c.attr {
+			t.Errorf("Validate(%+v): want ValidationError on %q, got %v", c.d, c.attr, err)
+		}
+	}
+}
+
 // fastHost answers ReadUnit with props or err.
 type fastHost struct {
 	host

@@ -9,6 +9,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/opentofu/opentofu/internal/providers"
+	"github.com/opentofu/opentofu/internal/tfdiags"
 )
 
 func serviceObj(attrs map[string]cty.Value) cty.Value {
@@ -82,5 +83,21 @@ func TestServiceValidate(t *testing.T) {
 	}
 	if !validateService(serviceObj(map[string]cty.Value{"name": cty.StringVal("web; reboot")})).HasErrors() {
 		t.Error("bad name accepted")
+	}
+}
+
+func TestServiceValidateDiagnosticsNameTheirAttribute(t *testing.T) {
+	for _, c := range []struct {
+		attr  string
+		attrs map[string]cty.Value
+	}{
+		{"name", map[string]cty.Value{"name": cty.StringVal("web; reboot")}},
+		{"state", map[string]cty.Value{"name": cty.StringVal("web"), "state": cty.StringVal("restarted")}},
+		{"masked", map[string]cty.Value{"name": cty.StringVal("web"), "masked": cty.True, "state": cty.StringVal("started")}},
+	} {
+		d := validateService(serviceObj(c.attrs))
+		if len(d) != 1 || !tfdiags.GetAttribute(d[0]).Equals(cty.GetAttrPath(c.attr)) {
+			t.Errorf("%s: want one diagnostic on %q, got %v", c.attr, c.attr, d.Err())
+		}
 	}
 }

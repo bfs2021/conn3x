@@ -5,6 +5,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/zclconf/go-cty/cty"
@@ -67,7 +68,12 @@ func validateService(cfg cty.Value) tfdiags.Diagnostics {
 	}
 	diags = diags.Append(validateOnRemove(cfg))
 	if err := desiredService(cfg).Validate(); err != nil {
-		diags = diags.Append(attrError("name", err.Error()))
+		attr := "name"
+		var ve *service.ValidationError
+		if errors.As(err, &ve) {
+			attr = ve.Attribute
+		}
+		diags = diags.Append(attrError(attr, err.Error()))
 	}
 	return diags
 }

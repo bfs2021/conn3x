@@ -166,6 +166,33 @@ func TestValidateErrorNamesAttribute(t *testing.T) {
 	}
 }
 
+func TestValidateRestartHintOnlyForRestartStates(t *testing.T) {
+	const hint = "notify a handler from the step that changes the config"
+	yes := true
+	// restarted/reloaded point people at the real way to restart; an arbitrary
+	// bad state or a masked unit does not get that hint.
+	for _, c := range []struct {
+		name string
+		d    Desired
+		want bool
+	}{
+		{"restarted", Desired{Name: "web", State: "restarted"}, true},
+		{"reloaded", Desired{Name: "web", State: "reloaded"}, true},
+		{"other bad state", Desired{Name: "web", State: "up"}, false},
+		{"masked", Desired{Name: "web", State: Started, Masked: &yes}, false},
+	} {
+		err := c.d.Validate()
+		if err == nil {
+			t.Errorf("%s: Validate accepted, want error", c.name)
+			continue
+		}
+		got := strings.Contains(err.Error(), hint)
+		if got != c.want {
+			t.Errorf("%s: hint present = %v, want %v (err: %s)", c.name, got, c.want, err)
+		}
+	}
+}
+
 // fastHost answers ReadUnit with props or err.
 type fastHost struct {
 	host

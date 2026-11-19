@@ -70,11 +70,13 @@ func (d Desired) Validate() error {
 	}
 	switch d.State {
 	case "", Started, Stopped:
+	case "restarted", "reloaded":
+		return &ValidationError{"state", fmt.Sprintf("state must be %q or %q, not %q; a step can't restart on every apply, so notify a handler from the step that changes the config, or use conn3x run -m service", Started, Stopped, d.State)}
 	default:
 		return &ValidationError{"state", fmt.Sprintf("state must be %q or %q, not %q", Started, Stopped, d.State)}
 	}
 	if d.Masked != nil && *d.Masked && (d.State == Started || d.Enabled != nil && *d.Enabled) {
-		return &ValidationError{"masked", "a masked unit can't be started or enabled; notify a handler from the step that changes the config, or use conn3x run"}
+		return &ValidationError{"masked", "a masked unit can't be started or enabled"}
 	}
 	return nil
 }
